@@ -1,49 +1,44 @@
 import requests
 import time
-cached_rate = None
-last_fetched = 0
+import threading
+from flask import Flask
+import os
+
 from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
 
-TOKEN = '8003016348:AAGlIdYJaNXUdibbJgr5G6CwoSpEnWEsMlE'  # <-- вставь сюда свой токен
+# --- Telegram Bot Setup ---
+TOKEN = '8003016348:AAGlIdYJaNXUdibbJgr5G6CwoSpEnWEsMlE'
 
-# Главное меню с кнопками
+cached_rate = None
+last_fetched = 0
+
 main_menu = ReplyKeyboardMarkup(
     [['🤖 О нас', '💱 Курс'], ['✅ AML проверка', '🛠 Связаться']],
     resize_keyboard=True
 )
 
-# Приветственное сообщение при /start
 start_text = """Добро пожаловать в Mosca!
 
 📍 Москва, Пресненская набережная 12, Башня Федерация. Восток, этаж 11
-
 📅 Мы работаем для вас 24/7. Без обеда и выходных.
-
 💵 Мы работаем только за наличные рубли.
-
 💹 Самый низкий курс на покупку USDT и лучший курс покупки USDT в Москве.
-
 🤑 Отсутствие каких-либо комиссий на покупку и продажу USDT
 
 Для покупки USDT нажмите на кнопку "Обмен"
 """
-
-# Функция получения курса USDT к RUB с CoinGecko
-
 
 def get_usdt_rub_rate():
     global cached_rate, last_fetched
     now = time.time()
     if cached_rate is not None and (now - last_fetched) < 60:
         return cached_rate
-
-    url = 'https://api.coingecko.com/api/v3/simple/price?ids=tether&vs_currencies=rub'
     try:
-        response = requests.get(url)
+        response = requests.get('https://api.coingecko.com/api/v3/simple/price?ids=tether&vs_currencies=rub')
         if response.status_code != 200:
             print(f"[HTTP Error]: {response.status_code}")
-            return cached_rate  # возврат старого курса
+            return cached_rate
         data = response.json()
         rate = data.get('tether', {}).get('rub')
         if rate is not None:
@@ -52,19 +47,17 @@ def get_usdt_rub_rate():
         return rate
     except Exception as e:
         print(f"[Ошибка парсинга курса]: {e}")
-        return cached_rate  # возврат старого курса в случае ошибки
+        return cached_rate
 
-# Обработчик команды /start
+# --- Telegram Handlers ---
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(start_text, reply_markup=main_menu)
 
-# Обработчик текстовых сообщений и кнопок
 async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     msg = update.message.text
 
     if msg == '🤖 О нас':
         await update.message.reply_text("""Добро пожаловать в наш бот для обмена криптовалюты!
-
 💰 Мы занимаемся обменом криптовалют более 3х лет.
 📅 Мы работаем для вас 24/7.
 💵 Мы работаем только за наличные рубли.
@@ -81,7 +74,7 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text(f"""Курс USDT к RUB сейчас примерно:
 
 Купить 1 USDT = {rate:.2f} RUB  
-Продать 1 USDT = {rate - 1:.2f} RUB  примерно на 1 рубль ниже покупки
+Продать 1 USDT = {rate - 1:.2f} RUB  (примерно на 1 рубль ниже покупки)
 
 *данный курс является биржевым и меняется каждую минуту.
 
@@ -101,14 +94,29 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 Для получения пропуска к нам в офис и покупки USDT, нажмите на кнопку "Обмен"
 """)
-
     else:
         await update.message.reply_text("Пожалуйста, выберите действие с помощью кнопок ниже.", reply_markup=main_menu)
 
-# Создаем и запускаем приложение
-app = ApplicationBuilder().token(TOKEN).build()
-app.add_handler(CommandHandler("start", start))
-app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), message_handler))
+# --- Telegram Bot Runner ---
+def run_telegram_bot():
+    app = ApplicationBuilder().token(TOKEN).build()
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), message_handler))
+    print("🤖 Бот запущен!")
+    app.run_polling()
 
-print("Бот запущен!")
-app.run_polling()
+# --- Flask Stub for Render Web Service ---
+flask_app = Flask(__name__)
+
+@flask_app.route('/')
+def home():
+    return '🟢 Бот работает. Render доволен.'
+
+if __name__ == '__main__':
+    # Запуск Telegram-бота в отдельном потоке
+    bot_thread = threading.Thread(target=run_telegram_bot)
+    bot_thread.start()
+
+    # Запуск Flask-сервера (Render требует открытый порт!)
+    port = int(os.environ.get('PORT', 10000))
+    flask_app.run(host='0.0.0.0', port=port)
