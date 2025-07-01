@@ -1,4 +1,7 @@
 import requests
+import time
+cached_rate = None
+last_fetched = 0
 from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
 
@@ -27,11 +30,29 @@ start_text = """Добро пожаловать в Mosca!
 """
 
 # Функция получения курса USDT к RUB с CoinGecko
+
+
 def get_usdt_rub_rate():
-url = 'https://api.coingecko.com/api/v3/simple/price?ids=tether&vs_currencies=rub'
-response = requests.get(url)
-print(response.status_code)
-print(response.text)
+    global cached_rate, last_fetched
+    now = time.time()
+    if cached_rate is not None and (now - last_fetched) < 60:
+        return cached_rate
+
+    url = 'https://api.coingecko.com/api/v3/simple/price?ids=tether&vs_currencies=rub'
+    try:
+        response = requests.get(url)
+        if response.status_code != 200:
+            print(f"[HTTP Error]: {response.status_code}")
+            return cached_rate  # возврат старого курса
+        data = response.json()
+        rate = data.get('tether', {}).get('rub')
+        if rate is not None:
+            cached_rate = rate
+            last_fetched = now
+        return rate
+    except Exception as e:
+        print(f"[Ошибка парсинга курса]: {e}")
+        return cached_rate  # возврат старого курса в случае ошибки
 
 # Обработчик команды /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
