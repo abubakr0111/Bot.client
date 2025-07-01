@@ -64,7 +64,7 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text(f"""Курс USDT к RUB сейчас примерно:
 
 Купить 1 USDT = {rate:.2f} RUB  
-Продать 1 USDT = {rate - 1:.2f} RUB  # примерно на 1 рубль ниже покупки
+Продать 1 USDT = {rate - 1:.2f} RUB  примерно на 1 рубль ниже покупки
 
 *данный курс является биржевым и меняется каждую минуту.
 
