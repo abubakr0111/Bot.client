@@ -28,14 +28,10 @@ start_text = """Добро пожаловать в Mosca!
 
 # Функция получения курса USDT к RUB с CoinGecko
 def get_usdt_rub_rate():
-    url = 'https://api.coingecko.com/api/v3/simple/price?ids=tether&vs_currencies=rub'
-    try:
-        response = requests.get(url)
-        data = response.json()
-        rate = data['tether']['rub']
-        return rate
-    except Exception:
-        return None
+url = 'https://api.coingecko.com/api/v3/simple/price?ids=tether&vs_currencies=rub'
+response = requests.get(url)
+print(response.status_code)
+print(response.text)
 
 # Обработчик команды /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
