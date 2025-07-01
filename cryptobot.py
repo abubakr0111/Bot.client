@@ -29,10 +29,13 @@ def get_usdt_rub_rate():
     url = 'https://api.coingecko.com/api/v3/simple/price?ids=tether&vs_currencies=rub'
     try:
         response = requests.get(url)
+        print("Response status code:", response.status_code)
+        print("Response JSON:", response.text)
         data = response.json()
         rate = data['tether']['rub']
         return rate
-    except Exception:
+    except Exception as e:
+        print("Ошибка при получении курса:", e)
         return None
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
